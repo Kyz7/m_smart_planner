@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../models/place.dart';
 import '../utils/format_currency.dart';
+import 'dart:convert'; // Added to use jsonEncode
 
 class PlanFormWidget extends StatefulWidget {
   final Place place;
@@ -116,76 +117,97 @@ class _PlanFormWidgetState extends State<PlanFormWidget> {
     }
   }
 
-  Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+
+Future<void> _handleSubmit() async {
+  if (!_formKey.currentState!.validate()) return;
+  
+  setState(() {
+    _saveLoading = true;
+    _saveSuccess = false;
+    _saveError = '';
+  });
+  
+  try {
+    // ✅ PERBAIKAN: Struktur data yang konsisten dengan model
+    final planData = {
+      'place': {
+        'name': widget.place.name,
+        'address': widget.place.address ?? '',
+        'location': {
+          'lat': widget.place.lat ?? -6.2088,
+          'lng': widget.place.lng ?? 106.8456,
+        },
+        'rating': widget.place.rating,
+        'photo': widget.place.photo ?? 'https://via.placeholder.com/800x400?text=No+Image',
+        'price': widget.place.price, // ✅ TAMBAHKAN: price field
+      },
+      // ✅ PERBAIKAN: Gunakan camelCase yang konsisten dengan model
+      'dateRange': {
+        'from': _startDate!.toIso8601String(),
+        'to': _endDate!.toIso8601String(),
+      },
+      // ✅ PERBAIKAN: Gunakan camelCase
+      'estimatedCost': _estimation?.totalCost ?? 0,
+      
+      // ✅ TAMBAHKAN: Field yang hilang
+      'travelers': {
+        'adults': _adults,
+        'children': _children,
+      },
+      
+      // ✅ PERBAIKAN: Struktur flight yang benar
+      'flight': _includeFlightCost && _nearestAirports != null
+          ? {
+              'origin': _nearestAirports!['origin']!,
+              'destination': _nearestAirports!['destination']!,
+              'price': _flightCost, // ✅ PERBAIKAN: gunakan 'price' bukan 'cost'
+            }
+          : null,
+      
+      // ✅ TAMBAHKAN: Timestamp untuk tracking
+      'createdAt': DateTime.now().toIso8601String(),
+    };
     
-    // Check if user is logged in (you'll need to implement auth check)
-    // if (!AuthService.isLoggedIn) {
-    //   Navigator.pushNamed(context, '/login');
-    //   return;
-    // }
+    // ✅ DEBUGGING: Log data yang dikirim
+    print('=== PLAN DATA BEING SENT ===');
+    print(jsonEncode(planData));
+    
+    final savedPlan = await ApiService.savePlan(planData);
+    
+    // ✅ DEBUGGING: Log response dari server
+    print('=== SAVED PLAN RESPONSE ===');
+    print('ID: ${savedPlan.id}');
+    print('Place: ${savedPlan.place.name}');
+    print('DateRange: ${savedPlan.dateRange.from} - ${savedPlan.dateRange.to}');
+    print('Cost: ${savedPlan.estimatedCost}');
     
     setState(() {
-      _saveLoading = true;
-      _saveSuccess = false;
-      _saveError = '';
+      _saveSuccess = true;
     });
     
-    try {
-      final planData = {
-        'place': {
-          'name': widget.place.name,
-          'address': widget.place.address ?? '',
-          'location': {
-            'lat': widget.place.lat ?? -6.2088,
-            'lng': widget.place.lng ?? 106.8456,
-          },
-          'rating': widget.place.rating,
-          'photo': widget.place.photo ?? 'https://via.placeholder.com/800x400?text=No+Image',
-        },
-        'date_range': {
-          'from': _startDate!.toIso8601String(),
-          'to': _endDate!.toIso8601String(),
-        },
-        'estimated_cost': _estimation?.totalCost ?? 0,
-        'travelers': {
-          'adults': _adults,
-          'children': _children,
-        },
-        'flight': _includeFlightCost && _nearestAirports != null
-            ? {
-                'origin': _nearestAirports!['origin']!,
-                'destination': _nearestAirports!['destination']!,
-                'cost': _flightCost,
-              }
-            : null,
-      };
-      
-      await ApiService.savePlan(planData);
-      
-      setState(() {
-        _saveSuccess = true;
-      });
-      
-      // Navigate back or to itinerary after 2 seconds
-      Future.delayed(const Duration(seconds: 2), () {
-        if (widget.onSaved != null) {
-          widget.onSaved!();
-        } else {
-          Navigator.pushReplacementNamed(context, '/itinerary');
-        }
-      });
-      
-    } catch (error) {
-      setState(() {
-        _saveError = 'Gagal menyimpan rencana perjalanan. Silakan coba lagi.';
-      });
-    } finally {
-      setState(() {
-        _saveLoading = false;
-      });
-    }
+    // Navigate back or to itinerary after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (widget.onSaved != null) {
+        widget.onSaved!();
+      } else {
+        Navigator.pushReplacementNamed(context, '/itinerary');
+      }
+    });
+    
+  } catch (error) {
+    // ✅ DEBUGGING: Log error detail
+    print('=== SAVE PLAN ERROR ===');
+    print('Error: $error');
+    
+    setState(() {
+      _saveError = 'Gagal menyimpan rencana perjalanan: $error';
+    });
+  } finally {
+    setState(() {
+      _saveLoading = false;
+    });
   }
+}    
 
   Widget _buildDatePicker({
   required String label,

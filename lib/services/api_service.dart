@@ -160,19 +160,108 @@ class ApiService {
     }
   }
 
-  static Future<TravelPlan> savePlan(Map<String, dynamic> planData) async {
+ static Future<TravelPlan> savePlan(Map<String, dynamic> planData) async {
+  // ✅ DEBUGGING: Log request detail
+  print('=== SAVE PLAN REQUEST ===');
+  print('URL: $baseUrl/plans');
+  print('Headers: ${await _getHeaders()}');
+  print('Body: ${jsonEncode(planData)}');
+  
+  try {
+    // ✅ VALIDASI: Cek data sebelum dikirim
+    if (!_validatePlanData(planData)) {
+      throw Exception('Invalid plan data structure');
+    }
+    
     final response = await http.post(
       Uri.parse('$baseUrl/plans'),
       headers: await _getHeaders(),
       body: jsonEncode(planData),
     );
-
-    if (response.statusCode == 201) {
-      return TravelPlan.fromJson(jsonDecode(response.body));
+    
+    // ✅ DEBUGGING: Log response detail
+    print('=== SAVE PLAN RESPONSE ===');
+    print('Status Code: ${response.statusCode}');
+    print('Response Headers: ${response.headers}');
+    print('Response Body: ${response.body}');
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      
+      // ✅ DEBUGGING: Log parsed response
+      print('=== PARSED RESPONSE DATA ===');
+      print('Response keys: ${responseData.keys.toList()}');
+      
+      // ✅ PERBAIKAN: Handle different response structures
+      Map<String, dynamic> planJson;
+      
+      if (responseData.containsKey('plan')) {
+        // Jika response wrapped dalam 'plan' key
+        planJson = responseData['plan'];
+      } else if (responseData.containsKey('data')) {
+        // Jika response wrapped dalam 'data' key
+        planJson = responseData['data'];
+      } else {
+        // Jika response langsung adalah plan object
+        planJson = responseData;
+      }
+      
+      // ✅ DEBUGGING: Log final plan data
+      print('=== FINAL PLAN JSON ===');
+      print(jsonEncode(planJson));
+      
+      return TravelPlan.fromJson(planJson);
     } else {
-      throw Exception('Failed to save plan: ${response.body}');
+      // ✅ IMPROVED ERROR: Include status code and response body
+      throw Exception('Failed to save plan (${response.statusCode}): ${response.body}');
+    }
+  } catch (error) {
+    // ✅ DEBUGGING: Log error with full context
+    print('=== API ERROR ===');
+    print('Error Type: ${error.runtimeType}');
+    print('Error Message: $error');
+    
+    if (error is http.ClientException) {
+      throw Exception('Network error: Check your internet connection');
+    } else if (error is FormatException) {
+      throw Exception('Invalid response format from server');
+    } else {
+      rethrow;
     }
   }
+}
+
+// ✅ TAMBAHKAN: Method untuk validasi data sebelum dikirim
+static bool _validatePlanData(Map<String, dynamic> planData) {
+  final requiredFields = ['place', 'dateRange', 'estimatedCost'];
+  
+  for (String field in requiredFields) {
+    if (!planData.containsKey(field) || planData[field] == null) {
+      print('❌ Missing required field: $field');
+      return false;
+    }
+  }
+  
+  // Validasi struktur place
+  if (planData['place'] is! Map || 
+      !planData['place'].containsKey('name') ||
+      planData['place']['name'] == null ||
+      planData['place']['name'].toString().isEmpty) {
+    print('❌ Invalid place data structure');
+    return false;
+  }
+  
+  // Validasi struktur dateRange
+  if (planData['dateRange'] is! Map || 
+      !planData['dateRange'].containsKey('from') ||
+      !planData['dateRange'].containsKey('to')) {
+    print('❌ Invalid dateRange data structure');
+    return false;
+  }
+  
+  print('✅ Plan data validation passed');
+  return true;
+}
 
   static Future<void> deletePlan(String planId) async {
     final response = await http.delete(
