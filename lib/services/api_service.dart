@@ -49,32 +49,53 @@ class ApiService {
 
   // Places
   static Future<Map<String, dynamic>> getPlaces({
-    required double lat,
-    required double lng,
-    String query = '',
-    int page = 1,
-    int limit = 9,
-  }) async {
-    final uri = Uri.parse('$baseUrl/api/places').replace(queryParameters: {
-      'lat': lat.toString(),
-      'lon': lng.toString(),
-      'query': query,
-      'page': page.toString(),
-      'limit': limit.toString(),
-    });
+  required double lat,
+  required double lng,
+  String query = '',
+  int page = 1,
+  int limit = 9,
+}) async {
+  final uri = Uri.parse('$baseUrl/api/places').replace(queryParameters: {
+    'lat': lat.toString(),
+    'lon': lng.toString(),
+    'query': query,
+    'page': page.toString(),
+    'limit': limit.toString(),
+  });
 
-    final response = await http.get(uri, headers: await _getHeaders());
+  print('=== API DEBUG ===');
+  print('Request URL: $uri');
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return {
-        'places': (data['places'] as List).map((p) => Place.fromJson(p)).toList(),
-        'pagination': data['pagination'],
-      };
+  final response = await http.get(uri, headers: await _getHeaders());
+
+  print('Response status: ${response.statusCode}');
+  print('Response body length: ${response.body.length}');
+  print('Response body preview: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}...');
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    print('JSON decode success');
+    print('Response data keys: ${data.keys.toList()}');
+    
+    // Check places data specifically
+    if (data.containsKey('places')) {
+      final places = data['places'];
+      print('Places found in response');
+      print('Places type: ${places.runtimeType}');
+      print('Places length: ${places is List ? places.length : 'not a list'}');
     } else {
-      throw Exception('Failed to fetch places: ${response.body}');
+      print('ERROR: No "places" key in response!');
     }
+
+    return {
+      'places': (data['places'] as List).map((p) => Place.fromJson(p)).toList(),
+      'pagination': data['pagination'],
+    };
+  } else {
+    print('API Error: ${response.body}');
+    throw Exception('Failed to fetch places: ${response.body}');
   }
+}
 
   // Weather
   static Future<WeatherData> getWeather(double lat, double lng, String date) async {

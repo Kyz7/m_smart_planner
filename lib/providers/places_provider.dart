@@ -108,49 +108,78 @@ class PlacesProvider with ChangeNotifier {
     }
   }
 
-  Future<void> fetchNearbyPlaces(double lat, double lng, {String query = '', int page = 1}) async {
-    // Check search limit for guests
-    if (_searchCount >= 2 && page == 1) {
-      _error = 'You have reached the search limit. Please login to continue.';
-      _isLoading = false;
-      notifyListeners();
-      return;
+
+
+Future<void> fetchNearbyPlaces(double lat, double lng, {String query = '', int page = 1}) async {
+  // Check search limit for guests
+ try {
+  print('=== DEBUG: Memulai fetch places ===');
+  print('Lat: $lat, Lng: $lng, Query: "$query", Page: $page');
+  
+  final result = await ApiService.getPlaces(
+    lat: lat,
+    lng: lng,
+    query: query,
+    page: page,
+  );
+
+  print('=== DEBUG: Response dari API ===');
+  print('Result type: ${result.runtimeType}');
+  print('Result keys: ${result.keys.toList()}');
+  
+  // Debug places data
+  final placesData = result['places'];
+  print('Places data type: ${placesData.runtimeType}');
+  print('Places data: $placesData');
+  
+  if (placesData is List) {
+    print('Places adalah List dengan ${placesData.length} items');
+    if (placesData.isNotEmpty) {
+      print('Item pertama: ${placesData[0]}');
     }
-
-    _isLoading = true;
-    _error = '';
-    notifyListeners();
-
-    try {
-      final result = await ApiService.getPlaces(
-        lat: lat,
-        lng: lng,
-        query: query,
-        page: page,
-      );
-
-      _places = result['places'];
-      _pagination = result['pagination'] ?? {};
-
-      if (_places.isEmpty) {
-        _error = 'No tourist destinations found in this location.';
-      }
-
-      // Update search count for guests
-      if (page == 1) {
-        _searchCount++;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('guestSearchCount', _searchCount);
-      }
-
-    } catch (e) {
-      _error = 'Failed to fetch places: $e';
-      _places = [];
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  } else {
+    print('ERROR: Places bukan List!');
   }
+
+  _places = result['places'];
+  _pagination = result['pagination'] ?? {};
+
+  print('=== DEBUG: Setelah assignment ===');
+  print('_places length: ${_places?.length ?? "null"}');
+  print('_places content: $_places');
+
+  if (_places == null || _places.isEmpty) {
+    print('Places kosong atau null, set error message');
+    _error = 'No tourist destinations found in this location.';
+  } else {
+    print('Berhasil load ${_places.length} places');
+    _error = ''; // Clear error jika ada data
+  }
+
+  // Update search count for guests
+  if (page == 1) {
+    _searchCount++;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('guestSearchCount', _searchCount);
+    print('Search count updated: $_searchCount');
+  }
+
+} catch (e) {
+  print('=== DEBUG: ERROR ===');
+  print('Error: $e');
+  print('Error type: ${e.runtimeType}');
+  
+  _error = 'Failed to fetch places: $e';
+  _places = [];
+} finally {
+  _isLoading = false;
+  print('=== DEBUG: Finally ===');
+  print('isLoading: $_isLoading');
+  print('places count: ${_places?.length ?? 0}');
+  print('error: $_error');
+  notifyListeners();
+}
+}
 
   Future<void> searchPlaces(double lat, double lng, String query) async {
     _currentPosition = Position(

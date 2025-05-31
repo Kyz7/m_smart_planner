@@ -31,6 +31,7 @@ class PlaceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // Added this to prevent unbounded height
           children: [
             // Image section with rating overlay
             Stack(
@@ -99,68 +100,67 @@ class PlaceCard extends StatelessWidget {
                   ),
               ],
             ),
-            // Content section
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    Text(
-                      place.name.isNotEmpty ? place.name : 'Unnamed Place',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+            // Content section - Removed Expanded and used Padding directly
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Title
+                  Text(
+                    place.name.isNotEmpty ? place.name : 'Unnamed Place',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
-                    const SizedBox(height: 8),
-                    // Address
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on,
-                          size: 16,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            place.address?.isNotEmpty == true 
-                                ? place.address! 
-                                : 'Alamat tidak tersedia',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  // Address
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          place.address?.isNotEmpty == true 
+                              ? place.address! 
+                              : 'Alamat tidak tersedia',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
-                    const Spacer(),
-                    // Additional info
-                    if (place.types?.isNotEmpty == true)
-                      Wrap(
-                        spacing: 4,
-                        children: place.types!
-                            .take(2)
-                            .map((type) => Chip(
-                                  label: Text(
-                                    type.replaceAll('_', ' ').toUpperCase(),
-                                    style: const TextStyle(fontSize: 10),
-                                  ),
-                                  backgroundColor: Colors.blue[50],
-                                  side: BorderSide(color: Colors.blue[200]!),
-                                ))
-                            .toList(),
                       ),
-                  ],
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 12), // Replaced Spacer with fixed spacing
+                  // Additional info
+                  if (place.types?.isNotEmpty == true)
+                    Wrap(
+                      spacing: 4,
+                      children: place.types!
+                          .take(2)
+                          .map((type) => Chip(
+                                label: Text(
+                                  type.replaceAll('_', ' ').toUpperCase(),
+                                  style: const TextStyle(fontSize: 10),
+                                ),
+                                backgroundColor: Colors.blue[50],
+                                side: BorderSide(color: Colors.blue[200]!),
+                              ))
+                          .toList(),
+                    ),
+                ],
               ),
             ),
           ],
