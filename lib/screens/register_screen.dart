@@ -10,8 +10,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
@@ -19,8 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -32,19 +30,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       
       try {
         final success = await authProvider.register({
-          'name': _nameController.text.trim(),
-          'email': _emailController.text.trim(),
+          'username': _usernameController.text.trim(),
           'password': _passwordController.text,
         });
 
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Registrasi berhasil!'),
+              content: Text('Pendaftaran berhasil! Silakan login dengan akun Anda.'),
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pushReplacementNamed(context, '/home');
+          // Navigate to login instead of home after successful registration
+          Navigator.pushReplacementNamed(context, '/login');
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -137,10 +135,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Column(
                       children: [
                         TextFormField(
-                          controller: _nameController,
-                          textCapitalization: TextCapitalization.words,
+                          controller: _usernameController,
                           decoration: InputDecoration(
-                            labelText: 'Nama Lengkap',
+                            labelText: 'Username',
                             prefixIcon: Icon(Icons.person_outlined),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -152,35 +149,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Nama tidak boleh kosong';
+                              return 'Username tidak boleh kosong';
                             }
-                            if (value.length < 2) {
-                              return 'Nama terlalu pendek';
-                            }
-                            return null;
-                          },
-                        ),
-                        SizedBox(height: 16),
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Color(0xFF2563EB)),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Email tidak boleh kosong';
-                            }
-                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                              return 'Format email tidak valid';
+                            if (value.length < 3) {
+                              return 'Username minimal 3 karakter';
                             }
                             return null;
                           },

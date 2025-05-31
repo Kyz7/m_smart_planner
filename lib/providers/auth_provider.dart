@@ -31,12 +31,14 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> login(String email, String password) async {
+  // Changed parameter name from 'email' to 'username'
+  Future<bool> login(String username, String password) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final response = await ApiService.login(email, password);
+      // Pass username instead of email to the API service
+      final response = await ApiService.login(username, password);
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', response['token']);

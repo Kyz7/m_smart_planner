@@ -1,6 +1,8 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'providers/auth_provider.dart';
 import 'providers/places_provider.dart';
 import 'screens/home_screen.dart';
@@ -10,7 +12,13 @@ import 'screens/detail_screen.dart';
 import 'screens/itinerary_screen.dart';
 import 'screens/splash_screen.dart';
 import 'models/place.dart';
-void main() {
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize date formatting for Indonesian locale
+  await initializeDateFormatting('id_ID', null);
+  
   runApp(MyApp());
 }
 
@@ -25,6 +33,20 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Travel Planner',
         debugShowCheckedModeBanner: false,
+        
+        // Add localization delegates
+        localizationsDelegates: [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        
+        // Add supported locales
+        supportedLocales: [
+          Locale('en', 'US'), // English (default)
+          Locale('id', 'ID'), // Indonesian
+        ],
+        
         theme: ThemeData(
           primarySwatch: Colors.blue,
           primaryColor: Color(0xFF2563EB),

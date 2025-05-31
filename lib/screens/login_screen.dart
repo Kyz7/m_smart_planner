@@ -11,13 +11,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController(); // Changed from _emailController
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose(); // Changed from _emailController
     _passwordController.dispose();
     super.dispose();
   }
@@ -29,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
       
       try {
         final success = await authProvider.login(
-          _emailController.text.trim(),
+          _usernameController.text.trim(), // Changed from _emailController
           _passwordController.text,
         );
 
@@ -136,11 +136,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       children: [
                         TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
+                          controller: _usernameController, // Changed from _emailController
+                          keyboardType: TextInputType.text, // Changed from emailAddress
                           decoration: InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email_outlined),
+                            labelText: 'Username', // Changed from 'Email'
+                            prefixIcon: Icon(Icons.person_outlined), // Changed from email_outlined
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -151,11 +151,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Email tidak boleh kosong';
+                              return 'Username tidak boleh kosong'; // Changed validation message
                             }
-                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                              return 'Format email tidak valid';
-                            }
+                            // Removed email regex validation
                             return null;
                           },
                         ),
