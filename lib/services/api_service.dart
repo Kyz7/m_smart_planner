@@ -117,7 +117,7 @@ class ApiService {
   // Cost Estimation
   static Future<Map<String, dynamic>> getEstimation(Map<String, dynamic> estimationData) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/api/estimation'),
+      Uri.parse('$baseUrl/api/estimate'),
       headers: await _getHeaders(),
       body: jsonEncode(estimationData),
     );

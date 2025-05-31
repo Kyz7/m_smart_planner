@@ -188,62 +188,65 @@ class _PlanFormWidgetState extends State<PlanFormWidget> {
   }
 
   Widget _buildDatePicker({
-    required String label,
-    required DateTime? selectedDate,
-    required ValueChanged<DateTime> onDateSelected,
-  }) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
+  required String label,
+  required DateTime? selectedDate,
+  required ValueChanged<DateTime> onDateSelected,
+}) {
+  return Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
           ),
-          const SizedBox(height: 4),
-          InkWell(
-            onTap: () async {
-              final date = await showDatePicker(
-                context: context,
-                initialDate: selectedDate ?? DateTime.now(),
-                firstDate: DateTime.now(),
-                lastDate: DateTime.now().add(const Duration(days: 365)),
-              );
-              if (date != null) {
-                onDateSelected(date);
-                _calculateEstimation();
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
-                  const SizedBox(width: 8),
-                  Text(
+        ),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () async {
+            final date = await showDatePicker(
+              context: context,
+              initialDate: selectedDate ?? DateTime.now(),
+              firstDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 365)),
+            );
+            if (date != null) {
+              onDateSelected(date);
+              _calculateEstimation();
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                const SizedBox(width: 8),
+                Expanded(  // Add this Expanded widget to prevent overflow
+                  child: Text(
                     selectedDate != null
                         ? DateFormat('dd/MM/yyyy').format(selectedDate)
                         : 'Pilih tanggal',
                     style: TextStyle(
                       color: selectedDate != null ? Colors.black87 : Colors.grey.shade500,
                     ),
+                    overflow: TextOverflow.ellipsis,  // Add this to handle long text gracefully
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildNumberInput({
     required String label,
