@@ -245,97 +245,114 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPlacesSection() {
-    return Consumer<PlacesProvider>(
-      builder: (context, placesProvider, child) {
-        return SliverPadding(
-          padding: EdgeInsets.all(20),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                if (index == 0) {
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: 16),
-                    child: Text(
-                      'Destinasi Wisata Populer',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF059669),
-                      ),
+  return Consumer<PlacesProvider>(
+    builder: (context, placesProvider, child) {
+      return SliverPadding(
+        padding: EdgeInsets.all(20),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              // Title section
+              if (index == 0) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    'Destinasi Wisata Populer',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF059669),
                     ),
-                  );
-                }
-                
-                final placeIndex = index - 1;
-                
-                if (placesProvider.isLoading && placeIndex == 0) {
+                  ),
+                );
+              }
+
+              final placeIndex = index - 1;
+
+              // Loading state when no places yet
+              if (placesProvider.isLoading && placesProvider.places.isEmpty) {
+                if (placeIndex == 0) {
                   return LoadingShimmer();
                 }
-                
-                if (placeIndex < placesProvider.places.length) {
-                  final place = placesProvider.places[placeIndex];
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: 16),
-                    child: PlaceCard(
-                      place: place,
-                      onTap: () => _navigateToDetail(place),
-                    ),
-                  );
-                }
-                
-                if (placesProvider.isLoading && placeIndex == placesProvider.places.length) {
-                  return Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-                
-                if (placesProvider.places.isEmpty && !placesProvider.isLoading) {
+                return SizedBox.shrink(); // Return empty widget instead of null
+              }
+
+              // Empty state
+              if (placesProvider.places.isEmpty && !placesProvider.isLoading) {
+                if (placeIndex == 0) {
                   return _buildEmptyState();
                 }
-                
-                return null;
-              },
-              childCount: placesProvider.isLoading && placesProvider.places.isEmpty 
-                ? 2 
-                : placesProvider.places.length + 1 + (placesProvider.isLoading ? 1 : 0),
-            ),
+                return SizedBox.shrink(); // Return empty widget instead of null
+              }
+
+              // Places list
+              if (placeIndex < placesProvider.places.length) {
+                final place = placesProvider.places[placeIndex];
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: PlaceCard(
+                    place: place,
+                    onTap: () => _navigateToDetail(place),
+                  ),
+                );
+              }
+
+              // Loading more indicator
+              if (placesProvider.isLoading && 
+                  placeIndex == placesProvider.places.length &&
+                  placesProvider.places.isNotEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              // Fallback - return empty widget instead of null
+              return SizedBox.shrink();
+            },
+            childCount: _calculateChildCount(placesProvider),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
+}
+
+int _calculateChildCount(PlacesProvider placesProvider) {
+  // Always include title (index 0)
+  int count = 1;
+  
+  if (placesProvider.isLoading && placesProvider.places.isEmpty) {
+    // Title + LoadingShimmer
+    count += 1;
+  } else if (placesProvider.places.isEmpty && !placesProvider.isLoading) {
+    // Title + EmptyState
+    count += 1;
+  } else {
+    // Title + Places + optional loading indicator
+    count += placesProvider.places.length;
+    if (placesProvider.isLoading) {
+      count += 1; // Loading more indicator
+    }
   }
+  
+  return count;
+}
 
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(40),
+        padding: EdgeInsets.all(20),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.location_off,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
+            Icon(Icons.search_off, size: 48, color: Colors.grey),
             SizedBox(height: 16),
             Text(
-              'Tidak ada destinasi wisata yang ditemukan',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey.shade600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Coba cari dengan kata kunci atau lokasi yang berbeda',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-              ),
+              'Tidak ada destinasi ditemukan.',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
           ],
