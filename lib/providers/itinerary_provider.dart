@@ -70,6 +70,6 @@ class ItineraryProvider with ChangeNotifier {
   }
 
   int getTotalDays() {
-    return _plans.fold(0, (sum, plan) => sum + plan.duration);
+    return _plans.fold(0, (sum, plan) => sum + (plan.duration?.inDays ?? 0));
   }
 }

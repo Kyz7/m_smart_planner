@@ -1,174 +1,96 @@
-// lib/models/itinerary.dart - COMPLETE FILE
-
-import 'dart:convert';
 import 'place.dart';
-
 class TravelPlan {
-  final String? id;
+  final String id;
   final Place place;
   final DateRange dateRange;
-  final FlightInfo? flight;
   final double estimatedCost;
+  final String? weather;
+  final Flight? flight;
+  final Travelers? travelers; // ✅ ADDED: travelers field
   final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final Duration? duration; // ✅ ADDED: duration field
 
   TravelPlan({
-    this.id,
+    required this.id,
     required this.place,
     required this.dateRange,
-    this.flight,
     required this.estimatedCost,
+    this.weather,
+    this.flight,
+    this.travelers, // ✅ ADDED: travelers parameter
     this.createdAt,
+    this.updatedAt,
+    this.duration, // ✅ ADDED: duration parameter
   });
 
   factory TravelPlan.fromJson(Map<String, dynamic> json) {
-    // ✅ DEBUGGING: Log incoming JSON
-    print('=== TRAVEL PLAN FROM JSON ===');
-    print('JSON keys: ${json.keys.toList()}');
-    print('Full JSON: ${jsonEncode(json)}');
-    
-    try {
-      // ✅ PERBAIKAN: Handle multiple possible field names
-      final String? planId = json['_id'] ?? json['id'];
-      
-      // ✅ PERBAIKAN: Handle place data dengan lebih robust
-      Map<String, dynamic> placeData;
-      if (json['place'] is Map<String, dynamic>) {
-        placeData = json['place'];
-      } else {
-        throw Exception('Invalid place data in JSON');
-      }
-      
-      // ✅ PERBAIKAN: Handle dateRange dengan multiple possible formats
-      Map<String, dynamic> dateRangeData;
-      if (json.containsKey('dateRange') && json['dateRange'] != null) {
-        dateRangeData = json['dateRange'];
-      } else if (json.containsKey('date_range') && json['date_range'] != null) {
-        dateRangeData = json['date_range'];
-      } else {
-        throw Exception('Missing dateRange data in JSON');
-      }
-      
-      // ✅ PERBAIKAN: Handle estimatedCost dengan multiple possible formats
-      double cost = 0.0;
-      if (json.containsKey('estimatedCost') && json['estimatedCost'] != null) {
-        cost = json['estimatedCost'].toDouble();
-      } else if (json.containsKey('estimated_cost') && json['estimated_cost'] != null) {
-        cost = json['estimated_cost'].toDouble();
-      }
-      
-      // ✅ PERBAIKAN: Handle flight data with null check
-      FlightInfo? flightInfo;
-      if (json['flight'] != null && json['flight'] is Map<String, dynamic>) {
-        try {
-          flightInfo = FlightInfo.fromJson(json['flight']);
-        } catch (e) {
-          print('⚠️ Warning: Failed to parse flight data: $e');
-          flightInfo = null;
-        }
-      }
-      
-      // ✅ PERBAIKAN: Handle createdAt dengan multiple formats
-      DateTime? createdAt;
-      if (json['createdAt'] != null) {
-        try {
-          createdAt = DateTime.parse(json['createdAt']);
-        } catch (e) {
-          print('⚠️ Warning: Failed to parse createdAt: $e');
-        }
-      } else if (json['created_at'] != null) {
-        try {
-          createdAt = DateTime.parse(json['created_at']);
-        } catch (e) {
-          print('⚠️ Warning: Failed to parse created_at: $e');
-        }
-      }
-      
-      final travelPlan = TravelPlan(
-        id: planId,
-        place: Place.fromJson(placeData),
-        dateRange: DateRange.fromJson(dateRangeData),
-        flight: flightInfo,
-        estimatedCost: cost,
-        createdAt: createdAt,
-      );
-      
-      // ✅ DEBUGGING: Log created object
-      print('✅ TravelPlan created successfully');
-      print('ID: ${travelPlan.id}');
-      print('Place: ${travelPlan.place.name}');
-      print('DateRange: ${travelPlan.dateRange.from} - ${travelPlan.dateRange.to}');
-      print('Cost: ${travelPlan.estimatedCost}');
-      
-      return travelPlan;
-      
-    } catch (error) {
-      print('❌ Error creating TravelPlan from JSON: $error');
-      print('JSON data: ${jsonEncode(json)}');
-      rethrow;
-    }
+    return TravelPlan(
+      id: json['id'].toString(),
+      place: Place.fromJson(json['place'] ?? {}),
+      dateRange: DateRange.fromJson(json['dateRange'] ?? {}),
+      estimatedCost: (json['estimatedCost'] ?? 0).toDouble(),
+      weather: json['weather'],
+      flight: json['flight'] != null ? Flight.fromJson(json['flight']) : null,
+      travelers: json['travelers'] != null ? Travelers.fromJson(json['travelers']) : null, // ✅ ADDED
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+    );
   }
 
-  // ✅ TAMBAHKAN: Method untuk convert ke JSON (untuk debugging)
   Map<String, dynamic> toJson() {
     return {
-      '_id': id,
+      'id': id,
       'place': place.toJson(),
       'dateRange': dateRange.toJson(),
-      'flight': flight?.toJson(),
       'estimatedCost': estimatedCost,
-      'createdAt': createdAt?.toIso8601String(),
+      if (weather != null) 'weather': weather,
+      if (flight != null) 'flight': flight!.toJson(),
+      if (travelers != null) 'travelers': travelers!.toJson(), // ✅ ADDED
+      if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+      if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
     };
-  }
-
-  int get duration {
-    return dateRange.to.difference(dateRange.from).inDays + 1;
   }
 }
 
-// ✅ DEFINISI CLASS DATERANGE
+class Location {
+  final double lat;
+  final double lng;
+
+  Location({
+    required this.lat,
+    required this.lng,
+  });
+
+  factory Location.fromJson(Map<String, dynamic> json) {
+    return Location(
+      lat: (json['lat'] ?? 0).toDouble(),
+      lng: (json['lng'] ?? 0).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'lat': lat,
+      'lng': lng,
+    };
+  }
+}
+
 class DateRange {
   final DateTime from;
   final DateTime to;
 
-  DateRange({required this.from, required this.to});
+  DateRange({
+    required this.from,
+    required this.to,
+  });
 
   factory DateRange.fromJson(Map<String, dynamic> json) {
-    // ✅ DEBUGGING: Log DateRange parsing
-    print('=== PARSING DATERANGE ===');
-    print('JSON: ${jsonEncode(json)}');
-    
-    try {
-      DateTime fromDate;
-      DateTime toDate;
-      
-      // ✅ PERBAIKAN: Handle multiple possible field names
-      if (json.containsKey('from') && json['from'] != null) {
-        fromDate = DateTime.parse(json['from']);
-      } else if (json.containsKey('start') && json['start'] != null) {
-        fromDate = DateTime.parse(json['start']);
-      } else if (json.containsKey('start_date') && json['start_date'] != null) {
-        fromDate = DateTime.parse(json['start_date']);
-      } else {
-        throw Exception('Missing start date in DateRange JSON');
-      }
-      
-      if (json.containsKey('to') && json['to'] != null) {
-        toDate = DateTime.parse(json['to']);
-      } else if (json.containsKey('end') && json['end'] != null) {
-        toDate = DateTime.parse(json['end']);
-      } else if (json.containsKey('end_date') && json['end_date'] != null) {
-        toDate = DateTime.parse(json['end_date']);
-      } else {
-        throw Exception('Missing end date in DateRange JSON');
-      }
-      
-      print('✅ DateRange parsed: $fromDate - $toDate');
-      return DateRange(from: fromDate, to: toDate);
-      
-    } catch (error) {
-      print('❌ Error parsing DateRange: $error');
-      rethrow;
-    }
+    return DateRange(
+      from: DateTime.parse(json['from']),
+      to: DateTime.parse(json['to']),
+    );
   }
 
   Map<String, dynamic> toJson() {
@@ -179,44 +101,55 @@ class DateRange {
   }
 }
 
-// ✅ DEFINISI CLASS FLIGHTINFO
-class FlightInfo {
+class Flight {
   final String origin;
   final String destination;
-  final double? price;
+  final double cost; // ✅ CHANGED: from 'price' to 'cost' to match React
 
-  FlightInfo({
+  Flight({
     required this.origin,
     required this.destination,
-    this.price,
+    required this.cost,
   });
 
-  factory FlightInfo.fromJson(Map<String, dynamic> json) {
-    // ✅ DEBUGGING: Log FlightInfo parsing
-    print('=== PARSING FLIGHTINFO ===');
-    print('JSON: ${jsonEncode(json)}');
-    
-    try {
-      final flightInfo = FlightInfo(
-        origin: json['origin'] ?? json['from'] ?? '',
-        destination: json['destination'] ?? json['to'] ?? '',
-        price: json['price']?.toDouble() ?? json['cost']?.toDouble(),
-      );
-      
-      print('✅ FlightInfo parsed: ${flightInfo.origin} → ${flightInfo.destination} (${flightInfo.price})');
-      return flightInfo;
-      
-    } catch (error) {
-      print('❌ Error parsing FlightInfo: $error');
-      rethrow;
-    }
+  factory Flight.fromJson(Map<String, dynamic> json) {
+    return Flight(
+      origin: json['origin'] ?? '',
+      destination: json['destination'] ?? '',
+      cost: (json['cost'] ?? 0).toDouble(), // ✅ CHANGED: from 'price' to 'cost'
+    );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'origin': origin,
       'destination': destination,
-      'price': price,
+      'cost': cost, // ✅ CHANGED: from 'price' to 'cost'
+    };
+  }
+}
+
+// ✅ ADDED: Travelers class
+class Travelers {
+  final int adults;
+  final int children;
+
+  Travelers({
+    required this.adults,
+    required this.children,
+  });
+
+  factory Travelers.fromJson(Map<String, dynamic> json) {
+    return Travelers(
+      adults: json['adults'] ?? 1,
+      children: json['children'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'adults': adults,
+      'children': children,
     };
   }
 }

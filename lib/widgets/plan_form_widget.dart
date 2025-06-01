@@ -1,9 +1,12 @@
+// lib/widgets/plan_form_widget.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart'; // Tambahkan import ini
 import '../services/api_service.dart';
 import '../models/place.dart';
 import '../utils/format_currency.dart';
-import 'dart:convert'; // Added to use jsonEncode
+import '../providers/itinerary_provider.dart'; // Tambahkan import ini
+import 'dart:convert';
 
 class PlanFormWidget extends StatefulWidget {
   final Place place;
@@ -117,158 +120,154 @@ class _PlanFormWidgetState extends State<PlanFormWidget> {
     }
   }
 
-
-Future<void> _handleSubmit() async {
-  if (!_formKey.currentState!.validate()) return;
-  
-  setState(() {
-    _saveLoading = true;
-    _saveSuccess = false;
-    _saveError = '';
-  });
-  
-  try {
-    // ✅ PERBAIKAN: Struktur data yang konsisten dengan model
-    final planData = {
-      'place': {
-        'name': widget.place.name,
-        'address': widget.place.address ?? '',
-        'location': {
-          'lat': widget.place.lat ?? -6.2088,
-          'lng': widget.place.lng ?? 106.8456,
+  Future<void> _handleSubmit() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    setState(() {
+      _saveLoading = true;
+      _saveSuccess = false;
+      _saveError = '';
+    });
+    
+    try {
+      // ✅ PERBAIKAN: Struktur data yang konsisten dengan React
+      final planData = {
+        'place': {
+          'name': widget.place.name,
+          'address': widget.place.address ?? '',
+          'location': {
+            'lat': widget.place.lat ?? -6.2088,
+            'lng': widget.place.lng ?? 106.8456,
+          },
+          'rating': widget.place.rating,
+          'photo': widget.place.photo ?? 'https://via.placeholder.com/800x400?text=No+Image',
+          'price': widget.place.price,
         },
-        'rating': widget.place.rating,
-        'photo': widget.place.photo ?? 'https://via.placeholder.com/800x400?text=No+Image',
-        'price': widget.place.price, // ✅ TAMBAHKAN: price field
-      },
-      // ✅ PERBAIKAN: Gunakan camelCase yang konsisten dengan model
-      'dateRange': {
-        'from': _startDate!.toIso8601String(),
-        'to': _endDate!.toIso8601String(),
-      },
-      // ✅ PERBAIKAN: Gunakan camelCase
-      'estimatedCost': _estimation?.totalCost ?? 0,
+        // ✅ PERBAIKAN: Konsisten dengan React - gunakan ISO string untuk Date
+        'dateRange': {
+          'from': _startDate!.toIso8601String(),
+          'to': _endDate!.toIso8601String(),
+        },
+        'estimatedCost': _estimation?.totalCost ?? 0,
+        'travelers': {
+          'adults': _adults,
+          'children': _children,
+        },
+        // ✅ PERBAIKAN: Konsisten dengan React - gunakan 'cost' bukan 'price'
+        'flight': _includeFlightCost && _nearestAirports != null
+            ? {
+                'origin': _nearestAirports!['origin']!,
+                'destination': _nearestAirports!['destination']!,
+                'cost': _flightCost, // ✅ Ubah dari 'price' ke 'cost'
+              }
+            : null,
+        'createdAt': DateTime.now().toIso8601String(),
+      };
       
-      // ✅ TAMBAHKAN: Field yang hilang
-      'travelers': {
-        'adults': _adults,
-        'children': _children,
-      },
+      // ✅ DEBUGGING: Log data yang dikirim
+      debugPrint('=== PLAN DATA BEING SENT ===');
+      debugPrint(jsonEncode(planData));
       
-      // ✅ PERBAIKAN: Struktur flight yang benar
-      'flight': _includeFlightCost && _nearestAirports != null
-          ? {
-              'origin': _nearestAirports!['origin']!,
-              'destination': _nearestAirports!['destination']!,
-              'price': _flightCost, // ✅ PERBAIKAN: gunakan 'price' bukan 'cost'
-            }
-          : null,
+      // ✅ PERBAIKAN: Gunakan Provider untuk save
+      final provider = Provider.of<ItineraryProvider>(context, listen: false);
+      final success = await provider.savePlan(planData);
       
-      // ✅ TAMBAHKAN: Timestamp untuk tracking
-      'createdAt': DateTime.now().toIso8601String(),
-    };
-    
-    // ✅ DEBUGGING: Log data yang dikirim
-    print('=== PLAN DATA BEING SENT ===');
-    print(jsonEncode(planData));
-    
-    final savedPlan = await ApiService.savePlan(planData);
-    
-    // ✅ DEBUGGING: Log response dari server
-    print('=== SAVED PLAN RESPONSE ===');
-    print('ID: ${savedPlan.id}');
-    print('Place: ${savedPlan.place.name}');
-    print('DateRange: ${savedPlan.dateRange.from} - ${savedPlan.dateRange.to}');
-    print('Cost: ${savedPlan.estimatedCost}');
-    
-    setState(() {
-      _saveSuccess = true;
-    });
-    
-    // Navigate back or to itinerary after 2 seconds
-    Future.delayed(const Duration(seconds: 2), () {
-      if (widget.onSaved != null) {
-        widget.onSaved!();
+      if (success) {
+        setState(() {
+          _saveSuccess = true;
+        });
+        
+        // Navigate back or to itinerary after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          if (widget.onSaved != null) {
+            widget.onSaved!();
+          } else {
+            Navigator.pushReplacementNamed(context, '/itinerary');
+          }
+        });
       } else {
-        Navigator.pushReplacementNamed(context, '/itinerary');
+        // ✅ PERBAIKAN: Ambil error dari provider
+        setState(() {
+          _saveError = provider.error.isNotEmpty 
+              ? provider.error 
+              : 'Gagal menyimpan rencana perjalanan';
+        });
       }
-    });
-    
-  } catch (error) {
-    // ✅ DEBUGGING: Log error detail
-    print('=== SAVE PLAN ERROR ===');
-    print('Error: $error');
-    
-    setState(() {
-      _saveError = 'Gagal menyimpan rencana perjalanan: $error';
-    });
-  } finally {
-    setState(() {
-      _saveLoading = false;
-    });
+      
+    } catch (error) {
+      debugPrint('=== SAVE PLAN ERROR ===');
+      debugPrint('Error: $error');
+      
+      setState(() {
+        _saveError = 'Gagal menyimpan rencana perjalanan: $error';
+      });
+    } finally {
+      setState(() {
+        _saveLoading = false;
+      });
+    }
   }
-}    
 
   Widget _buildDatePicker({
-  required String label,
-  required DateTime? selectedDate,
-  required ValueChanged<DateTime> onDateSelected,
-}) {
-  return Expanded(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 4),
-        InkWell(
-          onTap: () async {
-            final date = await showDatePicker(
-              context: context,
-              initialDate: selectedDate ?? DateTime.now(),
-              firstDate: DateTime.now(),
-              lastDate: DateTime.now().add(const Duration(days: 365)),
-            );
-            if (date != null) {
-              onDateSelected(date);
-              _calculateEstimation();
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(6),
+    required String label,
+    required DateTime? selectedDate,
+    required ValueChanged<DateTime> onDateSelected,
+  }) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
             ),
-            child: Row(
-              children: [
-                Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
-                const SizedBox(width: 8),
-                Expanded(  // Add this Expanded widget to prevent overflow
-                  child: Text(
-                    selectedDate != null
-                        ? DateFormat('dd/MM/yyyy').format(selectedDate)
-                        : 'Pilih tanggal',
-                    style: TextStyle(
-                      color: selectedDate != null ? Colors.black87 : Colors.grey.shade500,
+          ),
+          const SizedBox(height: 4),
+          InkWell(
+            onTap: () async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: selectedDate ?? DateTime.now(),
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (date != null) {
+                onDateSelected(date);
+                _calculateEstimation();
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      selectedDate != null
+                          ? DateFormat('dd/MM/yyyy').format(selectedDate)
+                          : 'Pilih tanggal',
+                      style: TextStyle(
+                        color: selectedDate != null ? Colors.black87 : Colors.grey.shade500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,  // Add this to handle long text gracefully
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildNumberInput({
     required String label,
@@ -510,40 +509,47 @@ Future<void> _handleSubmit() async {
               
               const SizedBox(height: 24),
               
-              // Submit button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: (_loading || _saveLoading) ? null : _handleSubmit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade600,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  child: _loading || _saveLoading
-                      ? Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(_saveLoading ? 'Menyimpan...' : 'Menghitung...'),
-                          ],
-                        )
-                      : const Text(
-                          'Simpan ke Itinerary',
-                          style: TextStyle(fontWeight: FontWeight.w500),
+              // Submit button with Consumer untuk loading state dari provider
+              Consumer<ItineraryProvider>(
+                builder: (context, provider, child) {
+                  final isProviderLoading = provider.isLoading;
+                  final isDisabled = _loading || _saveLoading || isProviderLoading;
+                  
+                  return SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isDisabled ? null : _handleSubmit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                ),
+                      ),
+                      child: isDisabled
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(_saveLoading || isProviderLoading ? 'Menyimpan...' : 'Menghitung...'),
+                              ],
+                            )
+                          : const Text(
+                              'Simpan ke Itinerary',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
