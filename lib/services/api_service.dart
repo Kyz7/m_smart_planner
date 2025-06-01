@@ -20,7 +20,7 @@ class ApiService {
   // Authentication
   static Future<Map<String, dynamic>> login(String username, String password) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
+      Uri.parse('$baseUrl/api/auth/login'),
       headers: await _getHeaders(),
       body: jsonEncode({'username': username, 'password': password}),
     );
@@ -34,7 +34,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>> register(Map<String, String> userData) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/auth/register'),
+      Uri.parse('$baseUrl/api/auth/register'),
       headers: await _getHeaders(),
       body: jsonEncode(userData),
     );
@@ -144,7 +144,105 @@ class ApiService {
     }
   }
 
-  // ✅ ADDED: Helper method to extract plan from different response structures
+  // ✅ NEW: Add to Itinerary method - Quick add without detailed planning
+  static Future<Map<String, dynamic>> addToItinerary(Map<String, dynamic> placeData) async {
+    print('=== ADD TO ITINERARY DEBUG ===');
+    print('Place data being sent: ${jsonEncode(placeData)}');
+    
+    // Create a simplified plan with default values for quick add
+    final quickPlanData = {
+      'place': placeData,
+      'dateRange': {
+        'from': DateTime.now().add(Duration(days: 1)).toIso8601String(),
+        'to': DateTime.now().add(Duration(days: 2)).toIso8601String(),
+      },
+      'estimatedCost': placeData['price'] ?? 150000,
+      'travelers': {
+        'adults': 1,
+        'children': 0,
+      },
+      'duration': 1,
+      'flight': {
+        'included': false,
+        'cost': 0,
+      },
+      'metadata': {
+        'quickAdd': true,
+        'createdAt': DateTime.now().toIso8601String(),
+        'source': 'mobile_app_quick_add',
+      },
+    };
+    
+    print('Quick plan data: ${jsonEncode(quickPlanData)}');
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/plans'),
+      headers: await _getHeaders(),
+      body: jsonEncode(quickPlanData),
+    );
+
+    print('Add to itinerary response status: ${response.statusCode}');
+    print('Add to itinerary response: ${response.body}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else {
+      final errorMessage = _getErrorMessage(response.statusCode, response.body);
+      throw Exception(errorMessage);
+    }
+  }
+
+  // ✅ NEW: Save detailed plan method
+  static Future<Map<String, dynamic>> savePlan(Map<String, dynamic> planData) async {
+    print('=== SAVE PLAN DEBUG ===');
+    print('Plan data being sent: ${jsonEncode(planData)}');
+    
+    // Validate plan data before sending
+    if (!_validatePlanData(planData)) {
+      throw Exception('Invalid plan data');
+    }
+    
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/plans'),
+      headers: await _getHeaders(),
+      body: jsonEncode(planData),
+    );
+
+    print('Save plan response status: ${response.statusCode}');
+    print('Save plan response: ${response.body}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final responseData = jsonDecode(response.body);
+      return _extractPlanFromResponse(responseData);
+    } else {
+      final errorMessage = _getErrorMessage(response.statusCode, response.body);
+      throw Exception(errorMessage);
+    }
+  }
+
+  // ✅ NEW: Get user's itinerary/plans
+  static Future<List<Map<String, dynamic>>> getItinerary() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/plans'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return List<Map<String, dynamic>>.from(data);
+      } else if (data is Map && data.containsKey('plans')) {
+        return List<Map<String, dynamic>>.from(data['plans']);
+      } else if (data is Map && data.containsKey('data')) {
+        return List<Map<String, dynamic>>.from(data['data']);
+      }
+      return [];
+    } else {
+      throw Exception('Failed to fetch itinerary: ${response.body}');
+    }
+  }
+
+  // ✅ Helper method to extract plan from different response structures
   static Map<String, dynamic> _extractPlanFromResponse(Map<String, dynamic> responseData) {
     // Try different possible response structures
     if (responseData.containsKey('plan')) {
@@ -167,7 +265,7 @@ class ApiService {
     throw Exception('Unable to extract plan data from response');
   }
 
-  // ✅ ADDED: Helper method to generate appropriate error messages
+  // ✅ Helper method to generate appropriate error messages
   static String _getErrorMessage(int statusCode, String responseBody) {
     switch (statusCode) {
       case 400:
@@ -187,7 +285,7 @@ class ApiService {
     }
   }
 
-  // ✅ IMPROVED: Enhanced validation with better error messages
+  // ✅ Enhanced validation with better error messages
   static bool _validatePlanData(Map<String, dynamic> planData) {
     print('=== VALIDATING PLAN DATA ===');
     
@@ -208,7 +306,7 @@ class ApiService {
       return false;
     }
     
-    final requiredPlaceFields = ['name', 'location'];
+    final requiredPlaceFields = ['name'];
     for (String field in requiredPlaceFields) {
       if (!place.containsKey(field) || place[field] == null) {
         print('❌ Missing required place field: $field');
@@ -219,26 +317,6 @@ class ApiService {
     // Validate place name
     if (place['name'].toString().trim().isEmpty) {
       print('❌ Place name is empty');
-      return false;
-    }
-    
-    // Validate location structure
-    final location = place['location'];
-    if (location is! Map || !location.containsKey('lat') || !location.containsKey('lng')) {
-      print('❌ Invalid location structure');
-      return false;
-    }
-    
-    // Validate coordinates
-    final lat = location['lat'];
-    final lng = location['lng'];
-    if (lat is! num || lng is! num) {
-      print('❌ Invalid coordinate types');
-      return false;
-    }
-    
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      print('❌ Invalid coordinate values');
       return false;
     }
     
@@ -273,7 +351,7 @@ class ApiService {
 
   static Future<void> deletePlan(String planId) async {
     final response = await http.delete(
-      Uri.parse('$baseUrl/plans/$planId'),
+      Uri.parse('$baseUrl/api/plans/$planId'),
       headers: await _getHeaders(),
     );
 

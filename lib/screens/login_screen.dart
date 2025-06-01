@@ -250,7 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(height: 20),
                 // Back to Home
                 TextButton.icon(
-                  onPressed: () => Navigator.pushReplacementNamed(context, '/home'),
+                  onPressed: () => Navigator.pushReplacementNamed(context, '/'),
                   icon: Icon(Icons.arrow_back, color: Colors.white70),
                   label: Text(
                     'Kembali ke Beranda',
