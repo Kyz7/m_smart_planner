@@ -49,53 +49,53 @@ class ApiService {
 
   // Places
   static Future<Map<String, dynamic>> getPlaces({
-  required double lat,
-  required double lng,
-  String query = '',
-  int page = 1,
-  int limit = 9,
-}) async {
-  final uri = Uri.parse('$baseUrl/api/places').replace(queryParameters: {
-    'lat': lat.toString(),
-    'lon': lng.toString(),
-    'query': query,
-    'page': page.toString(),
-    'limit': limit.toString(),
-  });
+    required double lat,
+    required double lng,
+    String query = '',
+    int page = 1,
+    int limit = 9,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/places').replace(queryParameters: {
+      'lat': lat.toString(),
+      'lon': lng.toString(),
+      'query': query,
+      'page': page.toString(),
+      'limit': limit.toString(),
+    });
 
-  print('=== API DEBUG ===');
-  print('Request URL: $uri');
+    print('=== API DEBUG ===');
+    print('Request URL: $uri');
 
-  final response = await http.get(uri, headers: await _getHeaders());
+    final response = await http.get(uri, headers: await _getHeaders());
 
-  print('Response status: ${response.statusCode}');
-  print('Response body length: ${response.body.length}');
-  print('Response body preview: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}...');
+    print('Response status: ${response.statusCode}');
+    print('Response body length: ${response.body.length}');
+    print('Response body preview: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}...');
 
-  if (response.statusCode == 200) {
-    final data = jsonDecode(response.body);
-    print('JSON decode success');
-    print('Response data keys: ${data.keys.toList()}');
-    
-    // Check places data specifically
-    if (data.containsKey('places')) {
-      final places = data['places'];
-      print('Places found in response');
-      print('Places type: ${places.runtimeType}');
-      print('Places length: ${places is List ? places.length : 'not a list'}');
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('JSON decode success');
+      print('Response data keys: ${data.keys.toList()}');
+      
+      // Check places data specifically
+      if (data.containsKey('places')) {
+        final places = data['places'];
+        print('Places found in response');
+        print('Places type: ${places.runtimeType}');
+        print('Places length: ${places is List ? places.length : 'not a list'}');
+      } else {
+        print('ERROR: No "places" key in response!');
+      }
+
+      return {
+        'places': (data['places'] as List).map((p) => Place.fromJson(p)).toList(),
+        'pagination': data['pagination'],
+      };
     } else {
-      print('ERROR: No "places" key in response!');
+      print('API Error: ${response.body}');
+      throw Exception('Failed to fetch places: ${response.body}');
     }
-
-    return {
-      'places': (data['places'] as List).map((p) => Place.fromJson(p)).toList(),
-      'pagination': data['pagination'],
-    };
-  } else {
-    print('API Error: ${response.body}');
-    throw Exception('Failed to fetch places: ${response.body}');
   }
-}
 
   // Weather
   static Future<WeatherData> getWeather(double lat, double lng, String date) async {
@@ -160,108 +160,194 @@ class ApiService {
     }
   }
 
- static Future<TravelPlan> savePlan(Map<String, dynamic> planData) async {
-  // ✅ DEBUGGING: Log request detail
-  print('=== SAVE PLAN REQUEST ===');
-  print('URL: $baseUrl/plans');
-  print('Headers: ${await _getHeaders()}');
-  print('Body: ${jsonEncode(planData)}');
-  
-  try {
-    // ✅ VALIDASI: Cek data sebelum dikirim
-    if (!_validatePlanData(planData)) {
-      throw Exception('Invalid plan data structure');
-    }
+  // ✅ FIXED: Improved savePlan with better error handling and response parsing
+  static Future<TravelPlan> savePlan(Map<String, dynamic> planData) async {
+    print('=== SAVE PLAN REQUEST ===');
+    print('URL: $baseUrl/plans');
     
-    final response = await http.post(
-      Uri.parse('$baseUrl/plans'),
-      headers: await _getHeaders(),
-      body: jsonEncode(planData),
-    );
-    
-    // ✅ DEBUGGING: Log response detail
-    print('=== SAVE PLAN RESPONSE ===');
-    print('Status Code: ${response.statusCode}');
-    print('Response Headers: ${response.headers}');
-    print('Response Body: ${response.body}');
-    
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      final responseData = jsonDecode(response.body);
-      
-      // ✅ DEBUGGING: Log parsed response
-      print('=== PARSED RESPONSE DATA ===');
-      print('Response keys: ${responseData.keys.toList()}');
-      
-      // ✅ PERBAIKAN: Handle different response structures
-      Map<String, dynamic> planJson;
-      
-      if (responseData.containsKey('plan')) {
-        // Jika response wrapped dalam 'plan' key
-        planJson = responseData['plan'];
-      } else if (responseData.containsKey('data')) {
-        // Jika response wrapped dalam 'data' key
-        planJson = responseData['data'];
-      } else {
-        // Jika response langsung adalah plan object
-        planJson = responseData;
+    try {
+      // ✅ IMPROVED: Enhanced validation
+      if (!_validatePlanData(planData)) {
+        throw Exception('Invalid plan data structure');
       }
+
+      final headers = await _getHeaders();
+      print('Headers: $headers');
+      print('Body: ${jsonEncode(planData)}');
       
-      // ✅ DEBUGGING: Log final plan data
-      print('=== FINAL PLAN JSON ===');
-      print(jsonEncode(planJson));
+      final response = await http.post(
+        Uri.parse('$baseUrl/plans'),
+        headers: headers,
+        body: jsonEncode(planData),
+      );
       
-      return TravelPlan.fromJson(planJson);
-    } else {
-      // ✅ IMPROVED ERROR: Include status code and response body
-      throw Exception('Failed to save plan (${response.statusCode}): ${response.body}');
-    }
-  } catch (error) {
-    // ✅ DEBUGGING: Log error with full context
-    print('=== API ERROR ===');
-    print('Error Type: ${error.runtimeType}');
-    print('Error Message: $error');
-    
-    if (error is http.ClientException) {
+      print('=== SAVE PLAN RESPONSE ===');
+      print('Status Code: ${response.statusCode}');
+      print('Response Headers: ${response.headers}');
+      print('Response Body: ${response.body}');
+      
+      // ✅ IMPROVED: Better response status handling
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        
+        print('=== PARSED RESPONSE DATA ===');
+        print('Response keys: ${responseData.keys.toList()}');
+        print('Full response: ${jsonEncode(responseData)}');
+        
+        // ✅ IMPROVED: More flexible response parsing
+        Map<String, dynamic> planJson = _extractPlanFromResponse(responseData);
+        
+        print('=== EXTRACTED PLAN JSON ===');
+        print(jsonEncode(planJson));
+        
+        return TravelPlan.fromJson(planJson);
+      } else {
+        // ✅ IMPROVED: Better error handling with status-specific messages
+        String errorMessage = _getErrorMessage(response.statusCode, response.body);
+        throw Exception(errorMessage);
+      }
+    } on http.ClientException catch (e) {
+      print('=== NETWORK ERROR ===');
+      print('Error: $e');
       throw Exception('Network error: Check your internet connection');
-    } else if (error is FormatException) {
+    } on FormatException catch (e) {
+      print('=== JSON FORMAT ERROR ===');
+      print('Error: $e');
       throw Exception('Invalid response format from server');
-    } else {
+    } catch (error) {
+      print('=== GENERAL ERROR ===');
+      print('Error Type: ${error.runtimeType}');
+      print('Error Message: $error');
       rethrow;
     }
   }
-}
 
-// ✅ TAMBAHKAN: Method untuk validasi data sebelum dikirim
-static bool _validatePlanData(Map<String, dynamic> planData) {
-  final requiredFields = ['place', 'dateRange', 'estimatedCost'];
-  
-  for (String field in requiredFields) {
-    if (!planData.containsKey(field) || planData[field] == null) {
-      print('❌ Missing required field: $field');
-      return false;
+  // ✅ ADDED: Helper method to extract plan from different response structures
+  static Map<String, dynamic> _extractPlanFromResponse(Map<String, dynamic> responseData) {
+    // Try different possible response structures
+    if (responseData.containsKey('plan')) {
+      return responseData['plan'];
+    } else if (responseData.containsKey('data')) {
+      if (responseData['data'] is Map) {
+        return responseData['data'];
+      } else if (responseData['data'] is List && (responseData['data'] as List).isNotEmpty) {
+        return (responseData['data'] as List).first;
+      }
+    } else if (responseData.containsKey('result')) {
+      return responseData['result'];
+    } else if (responseData.containsKey('travelPlan')) {
+      return responseData['travelPlan'];
+    } else {
+      // If response is directly the plan object
+      return responseData;
+    }
+    
+    throw Exception('Unable to extract plan data from response');
+  }
+
+  // ✅ ADDED: Helper method to generate appropriate error messages
+  static String _getErrorMessage(int statusCode, String responseBody) {
+    switch (statusCode) {
+      case 400:
+        return 'Bad request: Invalid data sent to server';
+      case 401:
+        return 'Unauthorized: Please login again';
+      case 403:
+        return 'Forbidden: You don\'t have permission to perform this action';
+      case 404:
+        return 'Not found: The requested resource was not found';
+      case 422:
+        return 'Validation error: Please check your input data';
+      case 500:
+        return 'Server error: Please try again later';
+      default:
+        return 'Failed to save plan (${statusCode}): $responseBody';
     }
   }
-  
-  // Validasi struktur place
-  if (planData['place'] is! Map || 
-      !planData['place'].containsKey('name') ||
-      planData['place']['name'] == null ||
-      planData['place']['name'].toString().isEmpty) {
-    print('❌ Invalid place data structure');
-    return false;
+
+  // ✅ IMPROVED: Enhanced validation with better error messages
+  static bool _validatePlanData(Map<String, dynamic> planData) {
+    print('=== VALIDATING PLAN DATA ===');
+    
+    // Check required top-level fields
+    final requiredFields = ['place', 'dateRange', 'estimatedCost'];
+    
+    for (String field in requiredFields) {
+      if (!planData.containsKey(field) || planData[field] == null) {
+        print('❌ Missing required field: $field');
+        return false;
+      }
+    }
+    
+    // Validate place structure
+    final place = planData['place'];
+    if (place is! Map) {
+      print('❌ Place field is not a Map');
+      return false;
+    }
+    
+    final requiredPlaceFields = ['name', 'location'];
+    for (String field in requiredPlaceFields) {
+      if (!place.containsKey(field) || place[field] == null) {
+        print('❌ Missing required place field: $field');
+        return false;
+      }
+    }
+    
+    // Validate place name
+    if (place['name'].toString().trim().isEmpty) {
+      print('❌ Place name is empty');
+      return false;
+    }
+    
+    // Validate location structure
+    final location = place['location'];
+    if (location is! Map || !location.containsKey('lat') || !location.containsKey('lng')) {
+      print('❌ Invalid location structure');
+      return false;
+    }
+    
+    // Validate coordinates
+    final lat = location['lat'];
+    final lng = location['lng'];
+    if (lat is! num || lng is! num) {
+      print('❌ Invalid coordinate types');
+      return false;
+    }
+    
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      print('❌ Invalid coordinate values');
+      return false;
+    }
+    
+    // Validate dateRange structure
+    final dateRange = planData['dateRange'];
+    if (dateRange is! Map || 
+        !dateRange.containsKey('from') || 
+        !dateRange.containsKey('to')) {
+      print('❌ Invalid dateRange structure');
+      return false;
+    }
+    
+    // Validate date formats (basic check)
+    try {
+      DateTime.parse(dateRange['from'].toString());
+      DateTime.parse(dateRange['to'].toString());
+    } catch (e) {
+      print('❌ Invalid date format in dateRange');
+      return false;
+    }
+    
+    // Validate estimatedCost
+    final estimatedCost = planData['estimatedCost'];
+    if (estimatedCost is! num || estimatedCost < 0) {
+      print('❌ Invalid estimatedCost value');
+      return false;
+    }
+    
+    print('✅ Plan data validation passed');
+    return true;
   }
-  
-  // Validasi struktur dateRange
-  if (planData['dateRange'] is! Map || 
-      !planData['dateRange'].containsKey('from') ||
-      !planData['dateRange'].containsKey('to')) {
-    print('❌ Invalid dateRange data structure');
-    return false;
-  }
-  
-  print('✅ Plan data validation passed');
-  return true;
-}
 
   static Future<void> deletePlan(String planId) async {
     final response = await http.delete(
@@ -269,7 +355,7 @@ static bool _validatePlanData(Map<String, dynamic> planData) {
       headers: await _getHeaders(),
     );
 
-    if (response.statusCode != 200) {
+    if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Failed to delete plan: ${response.body}');
     }
   }

@@ -1,11 +1,10 @@
-// lib/widgets/plan_form_widget.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart'; // Tambahkan import ini
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../models/place.dart';
 import '../utils/format_currency.dart';
-import '../providers/itinerary_provider.dart'; // Tambahkan import ini
+import '../providers/itinerary_provider.dart';
 import 'dart:convert';
 
 class PlanFormWidget extends StatefulWidget {
@@ -55,6 +54,11 @@ class _PlanFormWidgetState extends State<PlanFormWidget> {
       _startDate = today;
       _endDate = tomorrow;
     });
+    
+    // Calculate initial estimation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _calculateEstimation();
+    });
   }
 
   void _loadFlightEstimation() {
@@ -103,6 +107,7 @@ class _PlanFormWidgetState extends State<PlanFormWidget> {
         });
       } catch (error) {
         // Fallback to local calculation
+        debugPrint('Server estimation failed, using local calculation: $error');
         setState(() {
           _estimation = EstimationResult(
             duration: duration,
@@ -120,8 +125,17 @@ class _PlanFormWidgetState extends State<PlanFormWidget> {
     }
   }
 
+  // ✅ IMPROVED: Enhanced form submission with better validation and error handling
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // ✅ ADDED: Check if estimation is available
+    if (_estimation == null) {
+      setState(() {
+        _saveError = 'Harap tunggu perhitungan estimasi selesai';
+      });
+      return;
+    }
     
     setState(() {
       _saveLoading = true;
@@ -130,81 +144,93 @@ class _PlanFormWidgetState extends State<PlanFormWidget> {
     });
     
     try {
-      // ✅ PERBAIKAN: Struktur data yang konsisten dengan React
+      // ✅ IMPROVED: Use the enhanced toMinimalJson method
       final planData = {
-        'place': {
-          'name': widget.place.name,
-          'address': widget.place.address ?? '',
-          'location': {
-            'lat': widget.place.lat ?? -6.2088,
-            'lng': widget.place.lng ?? 106.8456,
-          },
-          'rating': widget.place.rating,
-          'photo': widget.place.photo ?? 'https://via.placeholder.com/800x400?text=No+Image',
-          'price': widget.place.price,
-        },
-        // ✅ PERBAIKAN: Konsisten dengan React - gunakan ISO string untuk Date
+        'place': widget.place.toMinimalJson(),
         'dateRange': {
           'from': _startDate!.toIso8601String(),
           'to': _endDate!.toIso8601String(),
         },
-        'estimatedCost': _estimation?.totalCost ?? 0,
+        'estimatedCost': _estimation!.totalCost,
         'travelers': {
           'adults': _adults,
           'children': _children,
         },
-        // ✅ PERBAIKAN: Konsisten dengan React - gunakan 'cost' bukan 'price'
+        'duration': _estimation!.duration,
         'flight': _includeFlightCost && _nearestAirports != null
             ? {
                 'origin': _nearestAirports!['origin']!,
                 'destination': _nearestAirports!['destination']!,
-                'cost': _flightCost, // ✅ Ubah dari 'price' ke 'cost'
+                'cost': _flightCost,
+                'included': true,
               }
-            : null,
-        'createdAt': DateTime.now().toIso8601String(),
+            : {
+                'included': false,
+                'cost': 0,
+              },
+        'metadata': {
+          'pricePerDay': widget.place.price ?? 150000,
+          'createdAt': DateTime.now().toIso8601String(),
+          'source': 'mobile_app',
+        },
       };
       
-      // ✅ DEBUGGING: Log data yang dikirim
       debugPrint('=== PLAN DATA BEING SENT ===');
       debugPrint(jsonEncode(planData));
       
-      // ✅ PERBAIKAN: Gunakan Provider untuk save
-      final provider = Provider.of<ItineraryProvider>(context, listen: false);
-      final success = await provider.savePlan(planData);
+      // ✅ IMPROVED: Direct API call with proper error handling
+      final savedPlan = await ApiService.savePlan(planData);
       
-      if (success) {
-        setState(() {
-          _saveSuccess = true;
-        });
-        
-        // Navigate back or to itinerary after 2 seconds
-        Future.delayed(const Duration(seconds: 2), () {
+      debugPrint('=== PLAN SAVED SUCCESSFULLY ===');
+      debugPrint('Saved plan ID: ${savedPlan.id}');
+      
+      // ✅ IMPROVED: Update provider after successful save
+      final provider = Provider.of<ItineraryProvider>(context, listen: false);
+      provider.savePlan(savedPlan.toJson());
+      
+      setState(() {
+        _saveSuccess = true;
+      });
+      
+      // Navigate back or to itinerary after 2 seconds
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
           if (widget.onSaved != null) {
             widget.onSaved!();
           } else {
             Navigator.pushReplacementNamed(context, '/itinerary');
           }
-        });
-      } else {
-        // ✅ PERBAIKAN: Ambil error dari provider
-        setState(() {
-          _saveError = provider.error.isNotEmpty 
-              ? provider.error 
-              : 'Gagal menyimpan rencana perjalanan';
-        });
-      }
+        }
+      });
       
     } catch (error) {
       debugPrint('=== SAVE PLAN ERROR ===');
       debugPrint('Error: $error');
       
       setState(() {
-        _saveError = 'Gagal menyimpan rencana perjalanan: $error';
+        _saveError = _getErrorMessage(error);
       });
     } finally {
       setState(() {
         _saveLoading = false;
       });
+    }
+  }
+
+  // ✅ ADDED: Helper method to generate user-friendly error messages
+  String _getErrorMessage(dynamic error) {
+    String errorMsg = error.toString();
+    
+    if (errorMsg.contains('Network error')) {
+      return 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+    } else if (errorMsg.contains('Unauthorized')) {
+      return 'Sesi Anda telah berakhir. Silakan login kembali.';
+    } else if (errorMsg.contains('Invalid data')) {
+      return 'Data yang dikirim tidak valid. Silakan periksa kembali.';
+    } else if (errorMsg.contains('Server error')) {
+      return 'Terjadi kesalahan server. Silakan coba lagi nanti.';
+    } else {
+      return 'Gagal menyimpan rencana perjalanan. Silakan coba lagi.';
     }
   }
 
