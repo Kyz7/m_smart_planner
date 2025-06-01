@@ -13,17 +13,10 @@ class FlightService {
       'Content-Type': 'application/json',
     };
     
-    // Add authorization token if available
-    // You might want to get this from SharedPreferences or secure storage
-    // final token = await getAuthToken();
-    // if (token != null) {
-    //   headers['Authorization'] = 'Bearer $token';
-    // }
     
     return headers;
   }
 
-  /// Fetch flight estimation data from API
   static Future<List<Flight>> getFlightEstimate(String fromCode, String toCode) async {
     try {
       debugPrint('Fetching flight estimate from $fromCode to $toCode');

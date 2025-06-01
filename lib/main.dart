@@ -9,7 +9,6 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/detail_screen.dart';
-import 'screens/itinerary_screen.dart';
 import 'screens/splash_screen.dart';
 import 'models/place.dart';
 
@@ -31,50 +30,38 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PlacesProvider()),
       ],
       child: MaterialApp(
-        title: 'Travel Planner',
-        debugShowCheckedModeBanner: false,
-        
-        // Add localization delegates
-        localizationsDelegates: [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        
-        // Add supported locales
-        supportedLocales: [
-          Locale('en', 'US'), // English (default)
-          Locale('id', 'ID'), // Indonesian
-        ],
-        
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          primaryColor: Color(0xFF2563EB),
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-          fontFamily: 'Roboto',
-        ),
-        initialRoute: '/',
-        routes: {
-          '/': (context) => SplashScreen(),
-          '/home': (context) => HomeScreen(),
-          '/login': (context) => LoginScreen(),
-          '/register': (context) => RegisterScreen(),
-          '/itinerary': (context) => ItineraryScreen(),
-        },
-        onGenerateRoute: (settings) {
-          final place = settings.arguments as Place?;
-          if (settings.name!.startsWith('/detail/')) {
-            final placeId = settings.name!.split('/')[2];
-            return MaterialPageRoute(
-              builder: (context) => DetailScreen(
-                place: place,
-                placeId: placeId,
-              ),
-            );
-          }
-          return null;
-        },
-      ),
+  // ... konfigurasi lainnya
+  onGenerateRoute: (settings) {
+    // Handle route untuk detail place
+    if (settings.name?.startsWith('/detail/') == true) {
+      final place = settings.arguments as Place;
+      return MaterialPageRoute(
+        builder: (context) => PlaceDetailScreen(place: place),
+        settings: settings,
+      );
+    }
+    
+    // Route lainnya...
+    switch (settings.name) {
+      case '/':
+        return MaterialPageRoute(builder: (context) => HomeScreen());
+      case '/login':
+        return MaterialPageRoute(builder: (context) => LoginScreen());
+      case '/register':
+        return MaterialPageRoute(builder: (context) => RegisterScreen());
+      case '/itinerary':
+        // return MaterialPageRoute(builder: (context) => ItineraryScreen());
+      default:
+        return MaterialPageRoute(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: Text('Route not found: ${settings.name}'),
+            ),
+          ),
+        );
+    }
+  },
+)
     );
   }
 }

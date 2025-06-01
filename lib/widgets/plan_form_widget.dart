@@ -126,96 +126,106 @@ class _PlanFormWidgetState extends State<PlanFormWidget> {
   }
 
   // ✅ IMPROVED: Enhanced form submission with better validation and error handling
-  Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+ Future<void> _handleSubmit() async {
+  if (!_formKey.currentState!.validate()) return;
+  
+  if (_estimation == null) {
+    setState(() {
+      _saveError = 'Harap tunggu perhitungan estimasi selesai';
+    });
+    return;
+  }
+  
+  setState(() {
+    _saveLoading = true;
+    _saveSuccess = false;
+    _saveError = '';
+  });
+  
+  try {
+    final planData = {
+      'place': widget.place.toMinimalJson(),
+      'dateRange': {
+        'from': _startDate!.toIso8601String(),
+        'to': _endDate!.toIso8601String(),
+      },
+      'estimatedCost': _estimation!.totalCost,
+      'travelers': {
+        'adults': _adults,
+        'children': _children,
+      },
+      'duration': _estimation!.duration,
+      'flight': _includeFlightCost && _nearestAirports != null
+          ? {
+              'origin': _nearestAirports!['origin']!,
+              'destination': _nearestAirports!['destination']!,
+              'cost': _flightCost,
+              'included': true,
+            }
+          : {
+              'included': false,
+              'cost': 0,
+            },
+      'metadata': {
+        'pricePerDay': widget.place.price ?? 150000,
+        'createdAt': DateTime.now().toIso8601String(),
+        'source': 'mobile_app',
+      },
+    };
     
-    // ✅ ADDED: Check if estimation is available
-    if (_estimation == null) {
-      setState(() {
-        _saveError = 'Harap tunggu perhitungan estimasi selesai';
-      });
-      return;
+    debugPrint('=== PLAN DATA BEING SENT ===');
+    debugPrint(jsonEncode(planData));
+    
+    // ✅ FIX 1: Check if provider is available before using it
+    ItineraryProvider? provider;
+    try {
+      provider = Provider.of<ItineraryProvider>(context, listen: false);
+    } catch (e) {
+      debugPrint('Provider not found in context: $e');
+      // Fall back to direct API call
     }
+    
+    // ✅ FIX 2: Use provider if available, otherwise direct API call
+    if (provider != null) {
+      final success = await provider.savePlan(planData);
+      if (!success) {
+        throw Exception(provider.error);
+      }
+    } else {
+      // Direct API call as fallback
+      await ApiService.savePlan(planData);
+    }
+    
+    debugPrint('=== PLAN SAVED SUCCESSFULLY ===');
     
     setState(() {
-      _saveLoading = true;
-      _saveSuccess = false;
-      _saveError = '';
+      _saveSuccess = true;
     });
     
-    try {
-      // ✅ IMPROVED: Use the enhanced toMinimalJson method
-      final planData = {
-        'place': widget.place.toMinimalJson(),
-        'dateRange': {
-          'from': _startDate!.toIso8601String(),
-          'to': _endDate!.toIso8601String(),
-        },
-        'estimatedCost': _estimation!.totalCost,
-        'travelers': {
-          'adults': _adults,
-          'children': _children,
-        },
-        'duration': _estimation!.duration,
-        'flight': _includeFlightCost && _nearestAirports != null
-            ? {
-                'origin': _nearestAirports!['origin']!,
-                'destination': _nearestAirports!['destination']!,
-                'cost': _flightCost,
-                'included': true,
-              }
-            : {
-                'included': false,
-                'cost': 0,
-              },
-        'metadata': {
-          'pricePerDay': widget.place.price ?? 150000,
-          'createdAt': DateTime.now().toIso8601String(),
-          'source': 'mobile_app',
-        },
-      };
-      
-      debugPrint('=== PLAN DATA BEING SENT ===');
-      debugPrint(jsonEncode(planData));
-      
-      // ✅ IMPROVED: Direct API call with proper error handling
-      final savedPlan = await ApiService.savePlan(planData);
-      
-      debugPrint('=== PLAN SAVED SUCCESSFULLY ===');
-      debugPrint('Saved plan ID: ${savedPlan.id}');
-      
-      // ✅ IMPROVED: Update provider after successful save
-      final provider = Provider.of<ItineraryProvider>(context, listen: false);
-      provider.savePlan(savedPlan.toJson());
-      
-      setState(() {
-        _saveSuccess = true;
-      });
-      
-      // Navigate back or to itinerary after 2 seconds
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          if (widget.onSaved != null) {
-            widget.onSaved!();
-          } else {
-            Navigator.pushReplacementNamed(context, '/itinerary');
-          }
+    // Navigate back or to itinerary after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        if (widget.onSaved != null) {
+          widget.onSaved!();
+        } else {
+          Navigator.pushReplacementNamed(context, '/itinerary');
         }
-      });
-      
-    } catch (error) {
-      debugPrint('=== SAVE PLAN ERROR ===');
-      debugPrint('Error: $error');
-      
-      setState(() {
-        _saveError = _getErrorMessage(error);
-      });
-    } finally {
-      setState(() {
-        _saveLoading = false;
-      });
-    }
+      }
+    });
+    
+  } catch (error) {
+    debugPrint('=== SAVE PLAN ERROR ===');
+    debugPrint('Error: $error');
+    
+    setState(() {
+      _saveError = _getErrorMessage(error);
+    });
+  } finally {
+    setState(() {
+      _saveLoading = false;
+    });
   }
+}
 
   // ✅ ADDED: Helper method to generate user-friendly error messages
   String _getErrorMessage(dynamic error) {

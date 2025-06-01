@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/place.dart';
 import '../models/weather.dart';
-import '../models/itinerary.dart';
 
 class ApiService {
   static const String baseUrl = 'http://192.168.1.6:3000'; // Replace with your API URL
@@ -142,83 +141,6 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to fetch flight estimate: ${response.body}');
-    }
-  }
-
-  // Itinerary
-  static Future<List<TravelPlan>> getUserPlans() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/plans'),
-      headers: await _getHeaders(),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return (data['plans'] as List).map((p) => TravelPlan.fromJson(p)).toList();
-    } else {
-      throw Exception('Failed to fetch plans: ${response.body}');
-    }
-  }
-
-  // ✅ FIXED: Improved savePlan with better error handling and response parsing
-  static Future<TravelPlan> savePlan(Map<String, dynamic> planData) async {
-    print('=== SAVE PLAN REQUEST ===');
-    print('URL: $baseUrl/plans');
-    
-    try {
-      // ✅ IMPROVED: Enhanced validation
-      if (!_validatePlanData(planData)) {
-        throw Exception('Invalid plan data structure');
-      }
-
-      final headers = await _getHeaders();
-      print('Headers: $headers');
-      print('Body: ${jsonEncode(planData)}');
-      
-      final response = await http.post(
-        Uri.parse('$baseUrl/plans'),
-        headers: headers,
-        body: jsonEncode(planData),
-      );
-      
-      print('=== SAVE PLAN RESPONSE ===');
-      print('Status Code: ${response.statusCode}');
-      print('Response Headers: ${response.headers}');
-      print('Response Body: ${response.body}');
-      
-      // ✅ IMPROVED: Better response status handling
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        
-        print('=== PARSED RESPONSE DATA ===');
-        print('Response keys: ${responseData.keys.toList()}');
-        print('Full response: ${jsonEncode(responseData)}');
-        
-        // ✅ IMPROVED: More flexible response parsing
-        Map<String, dynamic> planJson = _extractPlanFromResponse(responseData);
-        
-        print('=== EXTRACTED PLAN JSON ===');
-        print(jsonEncode(planJson));
-        
-        return TravelPlan.fromJson(planJson);
-      } else {
-        // ✅ IMPROVED: Better error handling with status-specific messages
-        String errorMessage = _getErrorMessage(response.statusCode, response.body);
-        throw Exception(errorMessage);
-      }
-    } on http.ClientException catch (e) {
-      print('=== NETWORK ERROR ===');
-      print('Error: $e');
-      throw Exception('Network error: Check your internet connection');
-    } on FormatException catch (e) {
-      print('=== JSON FORMAT ERROR ===');
-      print('Error: $e');
-      throw Exception('Invalid response format from server');
-    } catch (error) {
-      print('=== GENERAL ERROR ===');
-      print('Error Type: ${error.runtimeType}');
-      print('Error Message: $error');
-      rethrow;
     }
   }
 
