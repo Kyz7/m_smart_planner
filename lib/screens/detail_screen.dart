@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/place.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
-
+import '../widgets/plan_form_widget.dart';
 class PlaceDetailScreen extends StatefulWidget {
   final Place place;
 
@@ -22,6 +22,10 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   bool _isAddingToItinerary = false;
   final ScrollController _scrollController = ScrollController();
   bool _showAppBarTitle = false;
+
+  DateTime? _selectedDate;
+  String? _flightEstimate;
+  int _travelCount = 1; // Default jumlah travel
 
   @override
   void initState() {
@@ -57,7 +61,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
           _buildContent(),
         ],
       ),
-      floatingActionButton: _buildFloatingActionButton(),
     );
   }
 
@@ -165,25 +168,35 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     );
   }
 
-  Widget _buildContent() {
-    return SliverPadding(
-      padding: EdgeInsets.all(20),
-      sliver: SliverList(
-        delegate: SliverChildListDelegate([
-          _buildTitleSection(),
-          SizedBox(height: 24),
-          _buildInfoCards(),
-          SizedBox(height: 24),
-          _buildLocationSection(),
-          SizedBox(height: 24),
-          _buildTypesSection(),
-          SizedBox(height: 24),
-          _buildActionButtons(),
-          SizedBox(height: 80), // Space for FAB
-        ]),
-      ),
-    );
-  }
+Widget _buildContent() {
+  return SliverPadding(
+    padding: EdgeInsets.all(20),
+    sliver: SliverList(
+      delegate: SliverChildListDelegate([
+        _buildTitleSection(),
+        SizedBox(height: 24),
+        _buildInfoCards(),
+        SizedBox(height: 24),
+        _buildLocationSection(),
+        SizedBox(height: 24),
+        _buildTypesSection(),
+        SizedBox(height: 24),
+        _buildActionButtons(),
+        SizedBox(height: 24),
+        // Tambahkan PlanFormWidget di sini
+        Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            if (authProvider.isAuthenticated) {
+              return PlanFormWidget(place: widget.place);
+            }
+            return SizedBox.shrink();
+          },
+        ),
+        SizedBox(height: 80), // Space for FAB
+      ]),
+    ),
+  );
+}
 
   Widget _buildTitleSection() {
     return Column(
@@ -443,6 +456,77 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     );
   }
 
+  Widget _buildDatePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Pilih Tanggal',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        ElevatedButton(
+          onPressed: () async {
+            final DateTime? picked = await showDatePicker(
+              context: context,
+              initialDate: _selectedDate ?? DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2101),
+            );
+            if (picked != null && picked != _selectedDate) {
+              setState(() {
+                _selectedDate = picked;
+              });
+            }
+          },
+          child: Text(_selectedDate == null
+              ? 'Pilih Tanggal'
+              : 'Tanggal: ${_selectedDate!.toLocal()}'.split(' ')[0]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFlightEstimateField() {
+    return TextField(
+      decoration: InputDecoration(
+        labelText: 'Estimasi Penerbangan (jam)',
+        border: OutlineInputBorder(),
+      ),
+      keyboardType: TextInputType.number,
+      onChanged: (value) {
+        _flightEstimate = value;
+      },
+    );
+  }
+
+  Widget _buildTravelCountDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Jumlah Travel',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        DropdownButton<int>(
+          value: _travelCount,
+          onChanged: (int? newValue) {
+            setState(() {
+              _travelCount = newValue!;
+            });
+          },
+          items: List.generate(10, (index) => index + 1)
+              .map<DropdownMenuItem<int>>((int value) {
+            return DropdownMenuItem<int>(
+              value: value,
+              child: Text(value.toString()),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildActionButtons() {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
@@ -486,32 +570,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     );
   }
 
-  Widget _buildFloatingActionButton() {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        if (!authProvider.isAuthenticated) {
-          return SizedBox.shrink();
-        }
-
-        return FloatingActionButton.extended(
-          onPressed: _isAddingToItinerary ? null : _addToItinerary,
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          icon: _isAddingToItinerary
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : Icon(Icons.add),
-          label: Text(_isAddingToItinerary ? 'Menambahkan...' : 'Tambah ke Rencana'),
-        );
-      },
-    );
-  }
+ 
 
   String _getPriceLevelText(String priceLevel) {
     switch (priceLevel) {
@@ -550,6 +609,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     });
 
     try {
+      // Simpan data tambahan di sini jika diperlukan
       await ApiService.addToItinerary(widget.place.toMinimalJson());
       
       ScaffoldMessenger.of(context).showSnackBar(
