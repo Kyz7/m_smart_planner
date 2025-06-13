@@ -349,6 +349,23 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (itinerary.place['photo'] != null && itinerary.place['photo'] != '')
+  ClipRRect(
+    borderRadius: BorderRadius.circular(8),
+    child: Image.network(
+      itinerary.place['photo'],
+      height: 180,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) =>
+          Container(
+            height: 180,
+            color: Colors.grey[200],
+            child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
+          ),
+    ),
+  ),
+SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
