@@ -16,6 +16,7 @@ class WeatherWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     if (weatherData == null) {
       return Container(
+        width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.grey[100],
@@ -34,6 +35,8 @@ class WeatherWidget extends StatelessWidget {
     final currentDate = DateFormat('dd MMMM yyyy', 'id_ID').format(DateTime.now());
     
     return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20), // Add margin for spacing
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -55,36 +58,42 @@ class WeatherWidget extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // Prevent overflow
         children: [
           // Header section
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
+                flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       _getConditionText(weatherData!.description ?? ''),
                       style: const TextStyle(
-                        fontSize: 24,
+                        fontSize: 20, // Slightly smaller to prevent overflow
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       currentDate,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 12,
                         color: Colors.blue[100],
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       displayLocation,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 12,
                         color: Colors.blue[100],
                       ),
                       maxLines: 2,
@@ -93,100 +102,116 @@ class WeatherWidget extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                _getWeatherIcon(weatherData!.description ?? ''),
-                style: const TextStyle(fontSize: 48),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 1,
+                child: Center(
+                  child: Text(
+                    _getWeatherIcon(weatherData!.description ?? ''),
+                    style: const TextStyle(fontSize: 40), // Smaller icon
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          // Temperature section
+          const SizedBox(height: 16), // Reduced spacing
+          // Temperature and details section
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${weatherData!.temperature?.round() ?? 28}°C',
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    'Saat ini',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.blue[100],
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  if (weatherData!.humidity != null) ...[
-                    Column(
-                      children: [
-                        const Icon(
-                          Icons.water_drop,
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '${weatherData!.temperature?.round() ?? 28}°C',
+                        style: const TextStyle(
+                          fontSize: 32, // Slightly smaller
+                          fontWeight: FontWeight.bold,
                           color: Colors.white,
-                          size: 20,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${weatherData!.humidity}%',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          'Kelembaban',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.blue[100],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(width: 16),
+                    Text(
+                      'Saat ini',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[100],
+                      ),
+                    ),
                   ],
-                  if (weatherData!.windSpeed != null)
-                    Column(
-                      children: [
-                        const Icon(
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 2,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    if (weatherData!.humidity != null)
+                      Flexible(
+                        child: _buildWeatherDetail(
+                          Icons.water_drop,
+                          '${weatherData!.humidity}%',
+                          'Kelembaban',
+                        ),
+                      ),
+                    if (weatherData!.windSpeed != null)
+                      Flexible(
+                        child: _buildWeatherDetail(
                           Icons.air,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
                           '${weatherData!.windSpeed!.toStringAsFixed(1)} m/s',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
                           'Angin',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.blue[100],
-                          ),
                         ),
-                      ],
-                    ),
-                ],
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildWeatherDetail(IconData icon, String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          color: Colors.white,
+          size: 18,
+        ),
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+            maxLines: 1,
+          ),
+        ),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.blue[100],
+            ),
+            maxLines: 1,
+          ),
+        ),
+      ],
     );
   }
 

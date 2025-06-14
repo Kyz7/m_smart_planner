@@ -109,53 +109,88 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeroSection() {
-    return SliverToBoxAdapter(
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF2563EB),
-              Color(0xFF1D4ED8),
-              Color(0xFF7C3AED),
-            ],
+Widget _buildHeroSection() {
+  return SliverToBoxAdapter(
+    child: Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF2563EB),
+                Color(0xFF1D4ED8),
+                Color(0xFF7C3AED),
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              children: [
+                SizedBox(height: 20),
+                Text(
+                  'Temukan Destinasi Wisatamu',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Rencanakan perjalanan sempurna dengan informasi lengkap cuaca, harga, dan lokasi',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 24),
+                SearchBarWidget(onSearch: _onSearch),
+                SizedBox(height: 16),
+                // Move search limit info to avoid overlap
+                Consumer<AuthProvider>(
+                  builder: (context, authProvider, child) {
+                    if (authProvider.isAuthenticated) return SizedBox.shrink();
+                    
+                    return Consumer<PlacesProvider>(
+                      builder: (context, placesProvider, child) {
+                        final remaining = 2 - placesProvider.searchCount;
+                        
+                        return Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          margin: EdgeInsets.only(bottom: 30), // Add margin to prevent overlap
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            remaining > 0 
+                              ? 'Sisa pencarian: $remaining kali. Login untuk pencarian tanpa batas.'
+                              : 'Batas pencarian tercapai. Login untuk melanjutkan.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+                SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            children: [
-              SizedBox(height: 20),
-              Text(
-                'Temukan Destinasi Wisatamu',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 12),
-              Text(
-                'Rencanakan perjalanan sempurna dengan informasi lengkap cuaca, harga, dan lokasi',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white70,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 24),
-              SearchBarWidget(onSearch: _onSearch),
-              SizedBox(height: 16),
-              _buildSearchLimitInfo(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
   Widget _buildSearchLimitInfo() {
     return Consumer<AuthProvider>(
@@ -189,26 +224,41 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildWeatherSection() {
-    return Consumer<PlacesProvider>(
-      builder: (context, placesProvider, child) {
-        if (placesProvider.weather == null) return SliverToBoxAdapter(child: SizedBox.shrink());
-        
-        return SliverToBoxAdapter(
-          child: Transform.translate(
-            offset: Offset(0, -30),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
+Widget _buildWeatherSection() {
+  return Consumer<PlacesProvider>(
+    builder: (context, placesProvider, child) {
+      if (placesProvider.weather == null) return SliverToBoxAdapter(child: SizedBox.shrink());
+      
+      return SliverToBoxAdapter(
+        child: Transform.translate(
+          offset: Offset(0, -20), // Reduced overlap from -30 to -20
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              // Add background and shadow to make weather widget stand out
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
               child: WeatherWidget(
                 weatherData: placesProvider.weather!,
                 locationName: placesProvider.currentLocationName,
               ),
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
 
   Widget _buildErrorSection() {
     return Consumer<PlacesProvider>(
@@ -245,101 +295,96 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPlacesSection() {
-  return Consumer<PlacesProvider>(
-    builder: (context, placesProvider, child) {
-      return SliverPadding(
-        padding: EdgeInsets.all(20),
-        sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              // Title section
-              if (index == 0) {
-                return Padding(
-                  padding: EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    'Destinasi Wisata Populer',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF059669),
+    return Consumer<PlacesProvider>(
+      builder: (context, placesProvider, child) {
+        return SliverPadding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 20), // Reduced top padding since weather has negative margin
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                // Title section
+                if (index == 0) {
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: 16, top: 20), // Added top padding for spacing after weather
+                    child: Text(
+                      'Destinasi Wisata Populer',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF059669),
+                      ),
                     ),
-                  ),
-                );
-              }
-
-              final placeIndex = index - 1;
-
-              // Loading state when no places yet
-              if (placesProvider.isLoading && placesProvider.places.isEmpty) {
-                if (placeIndex == 0) {
-                  return LoadingShimmer();
+                  );
                 }
-                return SizedBox.shrink(); // Return empty widget instead of null
-              }
 
-              // Empty state
-              if (placesProvider.places.isEmpty && !placesProvider.isLoading) {
-                if (placeIndex == 0) {
-                  return _buildEmptyState();
+                final placeIndex = index - 1;
+
+                // Loading state when no places yet
+                if (placesProvider.isLoading && placesProvider.places.isEmpty) {
+                  if (placeIndex == 0) {
+                    return LoadingShimmer();
+                  }
+                  return SizedBox.shrink();
                 }
-                return SizedBox.shrink(); // Return empty widget instead of null
-              }
 
-              // Places list
-              if (placeIndex < placesProvider.places.length) {
-                final place = placesProvider.places[placeIndex];
-                return Padding(
-                  padding: EdgeInsets.only(bottom: 16),
-                  child: PlaceCard(
-                    place: place,
-                    onTap: () => _navigateToDetail(place),
-                  ),
-                );
-              }
+                // Empty state
+                if (placesProvider.places.isEmpty && !placesProvider.isLoading) {
+                  if (placeIndex == 0) {
+                    return _buildEmptyState();
+                  }
+                  return SizedBox.shrink();
+                }
 
-              // Loading more indicator
-              if (placesProvider.isLoading && 
-                  placeIndex == placesProvider.places.length &&
-                  placesProvider.places.isNotEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
+                // Places list
+                if (placeIndex < placesProvider.places.length) {
+                  final place = placesProvider.places[placeIndex];
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: PlaceCard(
+                      place: place,
+                      onTap: () => _navigateToDetail(place),
+                    ),
+                  );
+                }
 
-              // Fallback - return empty widget instead of null
-              return SizedBox.shrink();
-            },
-            childCount: _calculateChildCount(placesProvider),
+                // Loading more indicator
+                if (placesProvider.isLoading && 
+                    placeIndex == placesProvider.places.length &&
+                    placesProvider.places.isNotEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+
+                return SizedBox.shrink();
+              },
+              childCount: _calculateChildCount(placesProvider),
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
-
-int _calculateChildCount(PlacesProvider placesProvider) {
-  // Always include title (index 0)
-  int count = 1;
-  
-  if (placesProvider.isLoading && placesProvider.places.isEmpty) {
-    // Title + LoadingShimmer
-    count += 1;
-  } else if (placesProvider.places.isEmpty && !placesProvider.isLoading) {
-    // Title + EmptyState
-    count += 1;
-  } else {
-    // Title + Places + optional loading indicator
-    count += placesProvider.places.length;
-    if (placesProvider.isLoading) {
-      count += 1; // Loading more indicator
-    }
+        );
+      },
+    );
   }
-  
-  return count;
-}
+
+  int _calculateChildCount(PlacesProvider placesProvider) {
+    int count = 1;
+    
+    if (placesProvider.isLoading && placesProvider.places.isEmpty) {
+      count += 1;
+    } else if (placesProvider.places.isEmpty && !placesProvider.isLoading) {
+      count += 1;
+    } else {
+      count += placesProvider.places.length;
+      if (placesProvider.isLoading) {
+        count += 1;
+      }
+    }
+    
+    return count;
+  }
 
   Widget _buildEmptyState() {
     return Center(

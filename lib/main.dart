@@ -4,19 +4,18 @@ import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'providers/auth_provider.dart';
 import 'providers/places_provider.dart';
-import 'providers/itinerary_provider.dart'; // ✅ Add this import
+import 'providers/itinerary_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/detail_screen.dart';
 import 'screens/splash_screen.dart';
-import 'screens/itinerary_screen.dart'; // ✅ Add this import
+import 'screens/itinerary_screen.dart';
 import 'models/place.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize date formatting for Indonesian locale
   await initializeDateFormatting('id_ID', null);
   
   runApp(MyApp());
@@ -29,12 +28,11 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => PlacesProvider()),
-        ChangeNotifierProvider(create: (_) => ItineraryProvider()), // ✅ Add this provider
+        ChangeNotifierProvider(create: (_) => ItineraryProvider()),
       ],
       child: MaterialApp(
         title: 'Travel App',
         debugShowCheckedModeBanner: false,
-        // Add Indonesian localization
         localizationsDelegates: [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
@@ -44,14 +42,14 @@ class MyApp extends StatelessWidget {
           Locale('id', 'ID'), // Indonesian
           Locale('en', 'US'), // English
         ],
-        locale: Locale('id', 'ID'), // Default to Indonesian
+        locale: Locale('id', 'ID'),
         theme: ThemeData(
           primarySwatch: Colors.blue,
           visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
         home: SplashScreen(),
         onGenerateRoute: (settings) {
-          // Handle route untuk detail place
+      
           if (settings.name?.startsWith('/detail/') == true) {
             final place = settings.arguments as Place;
             return MaterialPageRoute(
@@ -60,7 +58,7 @@ class MyApp extends StatelessWidget {
             );
           }
           
-          // Route lainnya...
+          // Route
           switch (settings.name) {
             case '/home':
               return MaterialPageRoute(builder: (context) => HomeScreen());
@@ -69,7 +67,7 @@ class MyApp extends StatelessWidget {
             case '/register':
               return MaterialPageRoute(builder: (context) => RegisterScreen());
             case '/itinerary':
-              return MaterialPageRoute(builder: (context) => ItineraryScreen()); // ✅ Enable this route
+              return MaterialPageRoute(builder: (context) => ItineraryScreen()); 
             default:
               return MaterialPageRoute(
                 builder: (context) => Scaffold(
